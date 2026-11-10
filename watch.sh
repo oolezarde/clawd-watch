@@ -35,7 +35,9 @@ bark_push() {
           --arg b "$body" \
           --arg u "$TERMINAL_URL" \
           --arg lv "$level" \
-          '{device_key:$k, title:$t, body:$b, url:$u, level:$lv, sound:"alarm", volume:10, group:"clawd", isArchive:1}')" \
+          '{device_key:$k, title:$t, body:$b, url:$u, level:$lv, sound:"alarm", volume:10, group:"clawd", isArchive:1}
+           # 真警報的時候像來電一樣持續響，不是叮一聲就沉進通知中心
+           + (if $lv == "critical" then {call:"1"} else {} end)')" \
     >/dev/null && log "推送已送出：$title" || log "推送失敗"
 }
 
