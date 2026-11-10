@@ -1,0 +1,56 @@
+name: 螃蟹燒餅
+
+on:
+  schedule:
+    # 每 5 分鐘看一眼（GitHub 排程的最小間隔，尖峰時可能晚個幾分鐘）
+    - cron: '*/5 * * * *'
+    # 每天一次心跳，順便讓倉庫保持活躍：GitHub 會把 60 天沒動靜的倉庫的排程停掉
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      test:
+        description: '發一條測試推送，確認手機收得到'
+        type: boolean
+        default: false
+
+concurrency:
+  group: clawd-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    if: github.event.schedule != '17 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 測試推送
+        if: ${{ inputs.test }}
+        env:
+          BARK_URL: ${{ secrets.BARK_URL }}
+        run: bash watch.sh --test
+
+      - name: 看一眼螃蟹
+        if: ${{ !inputs.test }}
+        env:
+          BARK_URL: ${{ secrets.BARK_URL }}
+        run: bash watch.sh
+
+  heartbeat:
+    if: github.event.schedule == '17 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 蓋一個戳
+        run: |
+          date -u '+%Y-%m-%d %H:%M:%SZ  燒餅還在站崗' > HEARTBEAT.txt
+          git config user.name 'clawd-watch'
+          git config user.email 'actions@users.noreply.github.com'
+          git add HEARTBEAT.txt
+          git commit -m "heartbeat" || exit 0
+          git push
