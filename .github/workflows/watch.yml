@@ -40,6 +40,17 @@ jobs:
           BARK_URL: ${{ secrets.BARK_URL }}
         run: bash watch.sh
 
+      - name: 把看到的樣子記回倉庫
+        if: ${{ !inputs.test }}
+        run: |
+          git config user.name 'clawd-watch'
+          git config user.email 'actions@users.noreply.github.com'
+          git add state.json 2>/dev/null || exit 0
+          git diff --cached --quiet && { echo "狀態沒變，不用提交"; exit 0; }
+          git commit -q -m "state: $(jq -c '.off' state.json) / form=$(jq -r '.form_plushies' state.json)"
+          git pull --rebase --quiet origin main || true
+          git push --quiet origin HEAD:main || echo "推不上去，下一輪再說"
+
   heartbeat:
     if: github.event.schedule == '17 3 * * *'
     runs-on: ubuntu-latest
@@ -52,5 +63,6 @@ jobs:
           git config user.name 'clawd-watch'
           git config user.email 'actions@users.noreply.github.com'
           git add HEARTBEAT.txt
-          git commit -m "heartbeat" || exit 0
-          git push
+          git commit -q -m "heartbeat" || exit 0
+          git pull --rebase --quiet origin main || true
+          git push --quiet origin HEAD:main || true
